@@ -5,10 +5,14 @@ import org.lc.mybatis.mapper.UserMapper;
 import org.lc.mybatis.model.TTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 @Component
 public class UserService {
@@ -18,26 +22,20 @@ public class UserService {
     @Autowired
     private OrderMapper orderMapper;
 
+    @Autowired
+    private UserService1 userService1;
+
     public List<String> test() {
         return userMapper.getById();
     }
 
-    @Transactional(rollbackFor = Exception.class)
-    public int insertTest(TTest tTest) throws Exception{
-        try {
-            int id = userMapper.insertUser(tTest);
-            tTest.setAge("20");
-            updateTest(tTest);
-        }catch (Exception e){
-            throw new Exception(e);
-        }
-        return 1;
-    }
-
     @Transactional
-    public int updateTest(TTest tTest){
-        userMapper.updateUser(tTest);
-        int i = 1 / 0;
-        return i;
+    public int insertTest(TTest tTest) {
+        int id = userMapper.insertUser(tTest);
+        DefaultTransactionStatus transactionStatus = (DefaultTransactionStatus) TransactionAspectSupport.currentTransactionStatus();
+        transactionStatus.createAndHoldSavepoint();
+        userService1.insertTwo(tTest);
+        ExecutorService executorService = Executors.newFixedThreadPool(5);
+        return id;
     }
 }
